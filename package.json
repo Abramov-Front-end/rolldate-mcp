@@ -1,7 +1,7 @@
 {
   "name": "rolldate-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for RollDate — snippets, API reference, and integration help for AI agents",
+  "version": "1.1.0",
+  "description": "MCP server for RollDate — install assets, snippets, API reference for AI agents",
   "type": "module",
   "bin": {
     "rolldate-mcp": "./src/index.js"
@@ -9,6 +9,7 @@
   "main": "./src/index.js",
   "files": [
     "src",
+    "vendor",
     "README.md",
     "LICENSE"
   ],

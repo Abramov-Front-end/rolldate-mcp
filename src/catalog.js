@@ -255,21 +255,20 @@ picker.enableDate('31.12.2026');`
   }
 }
 
-export const INSTALL_GUIDE = `# RollDate install (browser / CDN-style)
+export const INSTALL_GUIDE = `# RollDate install
 
-## Files you need
+## Recommended (via this MCP)
 
-- \`dist/css/rolldate.min.css\`
-- \`dist/js/rolldate.min.js\`
+1. Call \`install_assets\` — copies \`rolldate.min.js\` + \`rolldate.min.css\` into \`vendor/rolldate/\` (or your folder).
+2. Call \`get_snippet\` or \`scaffold_example\` — get / write HTML+JS wiring.
+3. Or call \`scaffold_example\` alone — installs assets and writes \`rolldate-example.html\`.
 
-(Readable builds: \`rolldate.css\` / \`rolldate.js\`.)
-
-## Minimal HTML
+## Manual HTML
 
 \`\`\`html
-<link rel="stylesheet" href="./dist/css/rolldate.min.css">
+<link rel="stylesheet" href="./vendor/rolldate/rolldate.min.css">
 <input id="date-input" type="text" placeholder="Select date" autocomplete="off">
-<script src="./dist/js/rolldate.min.js"></script>
+<script src="./vendor/rolldate/rolldate.min.js"></script>
 <script>
   new RollDate('#date-input');
 </script>
