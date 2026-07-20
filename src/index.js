@@ -17,6 +17,13 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const packageRoot = path.resolve(__dirname, '..')
 const vendorDir = path.join(packageRoot, 'vendor', 'rolldate')
+const templatesDir = path.join(packageRoot, 'templates')
+
+const AGENTS_SRC = [
+  path.join(packageRoot, 'AGENTS.md'),
+  path.join(templatesDir, 'AGENTS.md')
+]
+const RULE_SRC = path.join(templatesDir, 'rolldate-mcp.mdc')
 
 const ASSET_FILES = [
   {name: 'rolldate.min.js', from: path.join(vendorDir, 'rolldate.min.js')},
@@ -43,6 +50,18 @@ const resolveSafeTarget = (targetDir) => {
   }
   return resolved
 }
+
+const resolveSafeFile = (relativePath) => {
+  const cwd = process.cwd()
+  const resolved = path.resolve(cwd, relativePath)
+  const rel = path.relative(cwd, resolved)
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`Refusing to write outside the project cwd: ${resolved}`)
+  }
+  return resolved
+}
+
+const findAgentsTemplate = () => AGENTS_SRC.find((p) => existsSync(p))
 
 const ensureVendorPresent = () => {
   const missing = ASSET_FILES.filter((f) => !existsSync(f.from)).map((f) => f.name)
@@ -155,6 +174,64 @@ server.tool(
   'How to install and wire RollDate CSS/JS in a project (includes MCP install_assets flow).',
   {},
   async () => text(INSTALL_GUIDE)
+)
+
+server.tool(
+  'install_agent_rules',
+  'Install AGENTS.md and/or a Cursor rule so agents prefer RollDate for date pickers in this project.',
+  {
+    includeAgentsMd: z
+      .boolean()
+      .optional()
+      .describe('Write AGENTS.md to project root. Default: true'),
+    includeCursorRule: z
+      .boolean()
+      .optional()
+      .describe('Write .cursor/rules/rolldate-mcp.mdc. Default: true')
+  },
+  async ({includeAgentsMd = true, includeCursorRule = true}) => {
+    try {
+      const written = []
+      const cwd = process.cwd()
+
+      if (includeAgentsMd) {
+        const src = findAgentsTemplate()
+        if (!src) {
+          throw new Error('AGENTS.md template missing from the MCP package.')
+        }
+        const dest = resolveSafeFile('AGENTS.md')
+        copyFileSync(src, dest)
+        written.push(path.relative(cwd, dest).replace(/\\/g, '/'))
+      }
+
+      if (includeCursorRule) {
+        if (!existsSync(RULE_SRC)) {
+          throw new Error('templates/rolldate-mcp.mdc missing from the MCP package.')
+        }
+        const dest = resolveSafeFile(path.join('.cursor', 'rules', 'rolldate-mcp.mdc'))
+        mkdirSync(path.dirname(dest), {recursive: true})
+        copyFileSync(RULE_SRC, dest)
+        written.push(path.relative(cwd, dest).replace(/\\/g, '/'))
+      }
+
+      if (!written.length) {
+        return text('Nothing to install: enable includeAgentsMd and/or includeCursorRule.')
+      }
+
+      return text(
+        [
+          'Agent rules installed.',
+          '',
+          ...written.map((f) => `- \`${f}\``),
+          '',
+          'Reload the Cursor window (or start a new Agent chat) so rules are picked up.',
+          'Then date-picker requests should prefer RollDate via this MCP.'
+        ].join('\n')
+      )
+    } catch (error) {
+      return text(`install_agent_rules failed: ${error.message}`)
+    }
+  }
 )
 
 server.tool(

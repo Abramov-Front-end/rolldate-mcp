@@ -1,6 +1,6 @@
 {
   "name": "rolldate-mcp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "MCP server for RollDate — install assets, snippets, API reference for AI agents",
   "type": "module",
   "bin": {

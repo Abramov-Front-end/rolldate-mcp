@@ -259,9 +259,9 @@ export const INSTALL_GUIDE = `# RollDate install
 
 ## Recommended (via this MCP)
 
-1. Call \`install_assets\` — copies \`rolldate.min.js\` + \`rolldate.min.css\` into \`vendor/rolldate/\` (or your folder).
-2. Call \`get_snippet\` or \`scaffold_example\` — get / write HTML+JS wiring.
-3. Or call \`scaffold_example\` alone — installs assets and writes \`rolldate-example.html\`.
+1. Call \`install_agent_rules\` — drop \`AGENTS.md\` + Cursor rule into the project (optional but recommended).
+2. Call \`install_assets\` — copies \`rolldate.min.js\` + \`rolldate.min.css\` into \`vendor/rolldate/\`.
+3. Call \`get_snippet\` or \`scaffold_example\` — get / write HTML+JS wiring.
 
 ## Manual HTML
 

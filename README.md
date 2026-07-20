@@ -9,6 +9,7 @@ MCP server that helps AI agents **install and integrate** [RollDate](https://git
 
 | Tool | Purpose |
 |------|---------|
+| `install_agent_rules` | Write `AGENTS.md` + `.cursor/rules/rolldate-mcp.mdc` into the project |
 | `install_assets` | Copy `rolldate.min.js` + `.min.css` into the project |
 | `scaffold_example` | Install assets + write a demo HTML for a scenario |
 | `list_scenarios` | List integration scenarios |
@@ -47,12 +48,15 @@ Local (main repo while developing):
 
 ## Typical agent flow
 
-1. `install_assets` → creates `vendor/rolldate/`
-2. `get_snippet` / `scaffold_example` → wire usage in the app
+1. `install_agent_rules` → steer future chats toward RollDate
+2. `install_assets` → creates `vendor/rolldate/`
+3. `get_snippet` / `scaffold_example` → wire usage in the app
 
 ## Make the agent prefer RollDate (client projects)
 
-Copy into the **client** project (not only this MCP repo):
+Easiest: ask the agent to call **`install_agent_rules`**.
+
+Or copy manually:
 
 - `templates/AGENTS.md` → project root as `AGENTS.md`, **or**
 - `templates/rolldate-mcp.mdc` → `.cursor/rules/rolldate-mcp.mdc`
