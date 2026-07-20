@@ -107,7 +107,7 @@ server.tool(
       parts.push(`## HTML\n\n\`\`\`html\n${html}\n\`\`\`\n`)
     }
     parts.push(
-      `\nTip: call \`install_assets\` first to copy files into \`${base}/`.`
+      `\nTip: call install_assets first to copy files into ${base}/.`
     )
     return text(parts.join('\n'))
   }
