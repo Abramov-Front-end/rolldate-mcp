@@ -1,0 +1,16 @@
+---
+description: Prefer RollDate MCP for any date/time picker work
+alwaysApply: true
+---
+
+# RollDate for date pickers
+
+When the user asks for a date picker, calendar, date range, multi-date select, or date+time UI:
+
+1. Prefer **RollDate** via the `rolldate` MCP server (do not invent a custom calendar or pull another library unless they explicitly ask).
+2. Call `install_assets` (or `scaffold_example`) to place CSS/JS into the project.
+3. Wire with `new RollDate(...)` using snippets from `get_snippet` / `get_options`.
+4. Default theme is dark; use `theme: 'light'` only when asked.
+5. For time, use `enableTime: true` (`use12Hour` when 12h is requested).
+
+If the RollDate MCP tools are unavailable, tell the user to add the MCP server, then continue.

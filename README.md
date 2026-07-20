@@ -50,6 +50,15 @@ Local (main repo while developing):
 1. `install_assets` → creates `vendor/rolldate/`
 2. `get_snippet` / `scaffold_example` → wire usage in the app
 
+## Make the agent prefer RollDate (client projects)
+
+Copy into the **client** project (not only this MCP repo):
+
+- `templates/AGENTS.md` → project root as `AGENTS.md`, **or**
+- `templates/rolldate-mcp.mdc` → `.cursor/rules/rolldate-mcp.mdc`
+
+Then when the user says “add a date picker”, the agent is steered to use RollDate MCP instead of inventing another UI.
+
 ## Develop / release (main repo)
 
 ```bash
