@@ -1,7 +1,6 @@
 /*!
- * RollDate v1.0.0
+ * RollDate
  * Human-readable build for review and customization.
- * For source with detailed comments, see /src.
  */
 
 var RollDate = (function () {
@@ -12,6 +11,56 @@ var RollDate = (function () {
     }
     function getDecade(year) {
         return Math.floor(year / 10) * 10
+    }
+
+    let lastHapticAt = 0;
+    let hapticAudioCtx = null;
+
+    function playSoftClick() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return
+            if (!hapticAudioCtx) hapticAudioCtx = new AudioCtx();
+            if (hapticAudioCtx.state === 'suspended') {
+                hapticAudioCtx.resume().catch(() => {});
+            }
+            const t = hapticAudioCtx.currentTime;
+            const osc = hapticAudioCtx.createOscillator();
+            const gain = hapticAudioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = 180;
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.exponentialRampToValueAtTime(0.045, t + 0.008);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+            osc.connect(gain);
+            gain.connect(hapticAudioCtx.destination);
+            osc.start(t);
+            osc.stop(t + 0.045);
+        } catch {
+            // Ignore audio unlock / autoplay failures.
+        }
+    }
+
+    /**
+     * Light tick feedback for scroll snaps (month/year/time).
+     * Uses Vibration API when available; otherwise a soft click (helps on iOS).
+     */
+    function hapticTick(enabled = true) {
+        if (!enabled || typeof window === 'undefined') return
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        if (now - lastHapticAt < 28) return
+        lastHapticAt = now;
+
+        try {
+            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                navigator.vibrate(10);
+                return
+            }
+        } catch {
+            // Fall through to audio click.
+        }
+
+        playSoftClick();
     }
 
     function parseDate(str, format = 'auto') {
@@ -84,9 +133,30 @@ var RollDate = (function () {
         return new Date(Number(year), Number(month) - 1, Number(day))
     }
 
-    function getLocaleInputFormat(locale = navigator.language) {
+    function formatDate(date, format = 'YYYY-MM-DD') {
+        if (!date || !(date instanceof Date) || isNaN(date)) return ''
+
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+
+        const tokens = {
+            'YYYY': y,
+            'YY': String(y).slice(-2),
+            'MM': m,
+            'M': date.getMonth() + 1,
+            'DD': d,
+            'D': date.getDate()
+        };
+
+        return format.replace(/YYYY|YY|MM|M|DD|D/g, match => tokens[match] || match)
+    }
+
+    function getLocaleInputFormat(locale) {
+        const resolvedLocale = locale ||
+            (typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-US');
         try {
-            const dtf = new Intl.DateTimeFormat(locale, {
+            const dtf = new Intl.DateTimeFormat(resolvedLocale, {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit'
@@ -1056,6 +1126,7 @@ var RollDate = (function () {
                 this.#period = this.#hours >= 12 ? 'PM' : 'AM';
             }
             this.onChange = options.onChange || (() => {});
+            this.hapticFeedback = options.hapticFeedback !== false;
             this.#build();
         }
 
@@ -1176,6 +1247,12 @@ var RollDate = (function () {
 
             column.updateActive = () => {
                 const index = column.indexFromOffset();
+                if (column._lastIndex !== index) {
+                    if (column._lastIndex !== undefined) {
+                        hapticTick(this.hapticFeedback);
+                    }
+                    column._lastIndex = index;
+                }
                 list.querySelectorAll('.RollDate__time__item').forEach((el, i) => {
                     el.classList.toggle('RollDate__time__item--active', i === index);
                 });
@@ -1322,12 +1399,16 @@ var RollDate = (function () {
     }
 
     class RollDate {
+        static #instances = new Set()
+
         #wheelHandler
         #viewNumber = 0
         #viewPeriodNames = ['day', 'month', 'year']
         #selectedDates = []
         #firstOpen = true
         #disabledDateStamps = new Set()
+        #docClickHandler = null
+        #openTriggers = []
 
         #clampDateToRange(date, minDate, maxDate) {
             if (!(date instanceof Date) || Number.isNaN(date.getTime())) return minDate
@@ -1396,9 +1477,7 @@ var RollDate = (function () {
         }
 
         #formatDateTime(date) {
-            const datePart = new Intl.DateTimeFormat(
-                this.options.locale || navigator.language
-            ).format(date);
+            const datePart = formatDate(date, this.options.dateFormat);
 
             if (!this.options.enableTime) return datePart
 
@@ -1451,6 +1530,7 @@ var RollDate = (function () {
                 minutes: start.getMinutes(),
                 use12Hour: this.options.use12Hour,
                 minuteStep: this.options.timeStep,
+                hapticFeedback: this.options.hapticFeedback !== false,
                 onChange: () => {
                     if (!this.#selectedDates.length) return
                     this.#selectedDates = this.#selectedDates.map(date => this.#applyTimeToDate(date));
@@ -1504,6 +1584,7 @@ var RollDate = (function () {
                 use12Hour: false,
                 timeStep: 1,
                 footerButtons: [],
+                hapticFeedback: true,
                 ...options
             };
 
@@ -1511,8 +1592,9 @@ var RollDate = (function () {
                 baseOptions.theme = 'dark';
             }
 
-            baseOptions.dateFormat = baseOptions.dateFormat ||
-                (baseOptions.locale ? getLocaleInputFormat(baseOptions.locale) : 'DD.MM.YYYY');
+            const resolvedLocale = baseOptions.locale ||
+                (typeof navigator !== 'undefined' ? navigator.language : undefined);
+            baseOptions.dateFormat = baseOptions.dateFormat || getLocaleInputFormat(resolvedLocale);
 
             const parsedDates = {
                 startDate: checkDateFormat(
@@ -1549,6 +1631,15 @@ var RollDate = (function () {
             }
 
             this.#init();
+            RollDate.#instances.add(this);
+        }
+
+        #closeOtherPopups() {
+            for (const instance of RollDate.#instances) {
+                if (instance !== this && instance.mode === 'popup') {
+                    instance.close();
+                }
+            }
         }
 
         #init() {
@@ -1769,26 +1860,27 @@ var RollDate = (function () {
                     openTriggers.push(this.$trigger);
                 }
 
-                openTriggers.forEach(trigger => {
-                    if (trigger) {
-                        trigger.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            this.open();
-                        });
+                this.#openTriggers = openTriggers.filter(Boolean);
 
-                        if (trigger.tagName === 'INPUT') {
-                            trigger.addEventListener('focus', () => this.open());
-                        }
+                this.#openTriggers.forEach(trigger => {
+                    trigger.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.open();
+                    });
+
+                    if (trigger.tagName === 'INPUT') {
+                        trigger.addEventListener('focus', () => this.open());
                     }
                 });
 
                 // Close when clicking outside picker and trigger elements.
-                document.addEventListener('click', (e) => {
+                this.#docClickHandler = (e) => {
                     if (!this.$container.contains(e.target) &&
-                        !openTriggers.some(t => t && t.contains(e.target))) {
+                        !this.#openTriggers.some(t => t.contains(e.target))) {
                         this.close();
                     }
-                });
+                };
+                document.addEventListener('click', this.#docClickHandler);
 
                 // Parse manual text input for popup inputs.
                 const inputs = this.$endInput ? [this.$startInput, this.$endInput] : [this.$trigger];
@@ -1815,6 +1907,7 @@ var RollDate = (function () {
                                 if (dominant.hasOwnProperty('decade'))
                                     this.data.current_decade = dominant.decade;
 
+                                hapticTick(this.options.hapticFeedback !== false);
                                 this.#updateHeader();
                                 break
                             }
@@ -2011,6 +2104,7 @@ var RollDate = (function () {
                         this.data.current_decade = targetDecade;
                     }
 
+                    hapticTick(this.options.hapticFeedback !== false);
                     this.#updateView(this.#viewNumber);
                 });
             });
@@ -2216,6 +2310,10 @@ var RollDate = (function () {
         }
 
         open() {
+            if (this.mode === 'popup') {
+                this.#closeOtherPopups();
+            }
+
             const wasOpen = this.$container.style.display !== 'none';
             this.$container.style.display = 'block';
 
@@ -2308,6 +2406,11 @@ var RollDate = (function () {
         }
 
         destroy() {
+            if (this.#docClickHandler) {
+                document.removeEventListener('click', this.#docClickHandler);
+                this.#docClickHandler = null;
+            }
+            RollDate.#instances.delete(this);
             this.observe.disconnect();
             this.scroll?.destroy();
             this.timePicker?.destroy();

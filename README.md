@@ -1,9 +1,17 @@
-# RollDate MCP
+# `@rolldate/mcp`
 
-MCP server that helps AI agents **install and integrate** [RollDate](https://github.com/Abramov-Front-end/rolldate) — a vanilla JS scrolling date picker.
+MCP server that helps AI agents **install and integrate** [RollDate](https://rolldate-demo.vercel.app/) — a JavaScript scrolling date picker. Works with **Cursor, Claude Desktop, VS Code, Windsurf**, and any other MCP-compatible client.
 
 > Dev: `mcp/` in the main RollDate repo.  
-> Public releases: this repo (`rolldate-mcp`), synced via `npm run build:mcp`.
+> Public GitHub mirror: [rolldate-mcp](https://github.com/Abramov-Front-end/rolldate-mcp) (synced via `npm run build:mcp`).
+
+## Install / run
+
+```bash
+npx -y @rolldate/mcp
+```
+
+Or pin a version: `npx -y @rolldate/mcp@1.0.0`
 
 ## Tools
 
@@ -20,14 +28,14 @@ MCP server that helps AI agents **install and integrate** [RollDate](https://git
 
 Bundled library files live in `vendor/rolldate/` inside this package.
 
-## Cursor config
+## Cursor / IDE config
 
 ```json
 {
   "mcpServers": {
     "rolldate": {
       "command": "npx",
-      "args": ["-y", "github:Abramov-Front-end/rolldate-mcp"]
+      "args": ["-y", "@rolldate/mcp"]
     }
   }
 }
@@ -67,10 +75,8 @@ Then when the user says “add a date picker”, the agent is steered to use Rol
 
 ```bash
 npm run build:mcp   # builds RollDate dist, packs vendor, syncs release/rolldate-mcp
-cd release/rolldate-mcp
-git add .
-git commit -m "Release rolldate-mcp v1.1.0"
-git push
+cd mcp
+npm publish --access public
 ```
 
 ## License

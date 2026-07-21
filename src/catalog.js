@@ -23,6 +23,7 @@ export const OPTIONS = [
   { name: 'enableTime', type: 'boolean', default: 'false', description: 'Show scrollable time picker in footer' },
   { name: 'use12Hour', type: 'boolean', default: 'false', description: '12-hour time + AM/PM column' },
   { name: 'timeStep', type: 'number', default: '1', description: 'Minute step (e.g. 5 → 00, 05, 10…)' },
+  { name: 'hapticFeedback', type: 'boolean', default: 'true', description: 'Tick feedback on month/year/decade/time changes (vibrate or soft click)' },
   { name: 'footerButtons', type: 'FooterButton[]', default: '[]', description: 'Custom footer buttons' },
   { name: 'selectDate', type: 'function', default: 'logs to console', description: 'Selection callback' },
   { name: 'onOpen', type: 'function', default: 'noop', description: 'Popup opened' },

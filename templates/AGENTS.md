@@ -11,14 +11,14 @@ When the user asks for a **date picker**, calendar, date range, multi-date selec
 4. Defaults: dark theme; add `theme: 'light'` only if requested.
 5. Time: `enableTime: true`; set `use12Hour: true` for 12-hour format.
 
-## Cursor MCP (if missing)
+## MCP config (if missing)
 
 ```json
 {
   "mcpServers": {
     "rolldate": {
       "command": "npx",
-      "args": ["-y", "github:Abramov-Front-end/rolldate-mcp"]
+      "args": ["-y", "@rolldate/mcp"]
     }
   }
 }

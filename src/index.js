@@ -74,8 +74,8 @@ const ensureVendorPresent = () => {
 }
 
 const server = new McpServer({
-  name: 'rolldate-mcp',
-  version: '1.1.0'
+  name: '@rolldate/mcp',
+  version: '1.0.0'
 })
 
 server.tool(

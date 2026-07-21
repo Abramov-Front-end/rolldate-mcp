@@ -1,13 +1,17 @@
 {
-  "name": "rolldate-mcp",
-  "version": "1.1.2",
-  "description": "MCP server for RollDate — install assets, snippets, API reference for AI agents",
+  "name": "@rolldate/mcp",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "1.0.0",
+  "description": "MCP server for RollDate — install assets, snippets, API reference for AI agents (Cursor & other IDEs)",
   "type": "module",
   "bin": {
-    "rolldate-mcp": "./src/index.js"
+    "rolldate-mcp": "bin/rolldate-mcp.js"
   },
   "main": "./src/index.js",
   "files": [
+    "bin",
     "src",
     "vendor",
     "templates",
@@ -24,9 +28,11 @@
     "rolldate",
     "datepicker",
     "calendar",
-    "cursor"
+    "cursor",
+    "claude",
+    "vscode"
   ],
-  "author": "Abramov Yevhen",
+  "author": "Abramov Yevhen <rolldate.support@gmail.com>",
   "license": "MIT",
   "engines": {
     "node": ">=18"
@@ -35,8 +41,12 @@
     "@modelcontextprotocol/sdk": "^1.12.1",
     "zod": "^3.24.2"
   },
+  "homepage": "https://rolldate-demo.vercel.app/#mcp",
+  "bugs": {
+    "email": "rolldate.support@gmail.com"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Abramov-Front-end/rolldate-mcp.git"
+    "url": "git+https://github.com/Abramov-Front-end/rolldate-mcp.git"
   }
 }
