@@ -15,6 +15,8 @@ export const OPTIONS = [
   { name: 'locale', type: 'string', default: '—', description: 'Browser locale hint for default dateFormat' },
   { name: 'startWeekFromMonday', type: 'boolean', default: 'true', description: 'Week starts on Monday when true' },
   { name: 'disabledDates', type: 'string[]', default: '[]', description: 'Dates that cannot be selected' },
+  { name: 'highlightDates', type: '(string|Date|{date,color?,colors?})[]', default: '[]', description: 'Dot markers on days; optional color(s) per date' },
+  { name: 'rangePresets', type: 'RangePreset[]', default: '[]', description: 'Quick range buttons (range mode); getRange(picker) returns [start,end]' },
   { name: 'closeOnSelect', type: 'boolean', default: 'true', description: 'Close popup after selection (single mode)' },
   { name: 'triggerSelector', type: 'string', default: '—', description: 'CSS selector for open trigger' },
   { name: 'monthsNames', type: 'string[]', default: 'English month names', description: 'Full month labels' },
@@ -37,10 +39,20 @@ export const METHODS = [
   { name: 'close()', description: 'Hide popup' },
   { name: 'selectToday()', description: 'Select today (respects disabled dates; applies time if enabled)' },
   { name: 'clearSelection()', description: 'Clear current selection' },
+  { name: 'goToDate(dateLike)', description: 'Navigate calendar to date without selecting' },
+  { name: 'getValue()', description: 'Current value: Date|null (single) or Date[] (range/multi)' },
+  { name: 'setValue(value)', description: 'Set selection programmatically; null clears' },
+  { name: 'getViewMonth()', description: 'Visible month { year, month } (follows scroll)' },
+  { name: 'getViewDate()', description: 'First day of visible month' },
   { name: 'setDisabledDates(dates)', description: 'Replace full disabled list' },
   { name: 'disableDate(dateLike)', description: 'Disable one date' },
   { name: 'enableDate(dateLike)', description: 'Enable one date' },
   { name: 'isDateDisabled(dateLike)', description: 'Returns boolean' },
+  { name: 'setHighlightDates(dates)', description: 'Replace highlight markers' },
+  { name: 'highlightDate(dateLike, color?)', description: 'Add dot marker (append)' },
+  { name: 'unhighlightDate(dateLike, color?)', description: 'Remove dot marker(s)' },
+  { name: 'isDateHighlighted(dateLike)', description: 'Returns boolean' },
+  { name: 'getHighlightColors(dateLike)', description: 'Dot colors for a day' },
   { name: 'destroy()', description: 'Remove picker from DOM and detach listeners' }
 ]
 
@@ -250,6 +262,64 @@ picker.enableDate('31.12.2026');`
     { text: 'Today', action: 'today' },
     { text: 'Clear', action: 'clear' },
     { text: 'Done', onClick: (picker) => picker.close() }
+  ]
+});`
+    )
+  },
+  highlight: {
+    id: 'highlight',
+    title: 'Highlighted dates',
+    description: 'Dot markers with optional colors; multiple dots per day.',
+    js: `new RollDate('#calendar', {
+  highlightDates: [
+    { date: '15.08.2026', color: '#22c55e' },
+    { date: '20.08.2026', colors: ['#ef4444', '#a855f7'] }
+  ]
+});`,
+    html: htmlShell(
+      `  <div id="calendar"></div>`,
+      `new RollDate('#calendar', {
+  highlightDates: [
+    { date: '15.08.2026', color: '#22c55e' },
+    { date: '20.08.2026', colors: ['#ef4444', '#a855f7'] }
+  ]
+});`
+    )
+  },
+  'range-presets': {
+    id: 'range-presets',
+    title: 'Range presets',
+    description: 'Quick range buttons; use picker.getViewMonth() for visible month.',
+    js: `new RollDate('#range', {
+  selectType: 'range',
+  closeOnSelect: false,
+  rangePresets: [
+    {
+      label: '7 days',
+      getRange(picker) {
+        const start = picker.selectedDates[0] ?? picker.getViewDate();
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        return [start, end];
+      }
+    },
+    {
+      label: 'This month',
+      getRange(picker) {
+        const { year, month } = picker.getViewMonth();
+        return [new Date(year, month, 1), new Date(year, month + 1, 0)];
+      }
+    }
+  ]
+});`,
+    html: htmlShell(
+      `  <input id="range" type="text" placeholder="Select range" autocomplete="off">`,
+      `new RollDate('#range', {
+  selectType: 'range',
+  closeOnSelect: false,
+  rangePresets: [
+    { label: '7 days', getRange(p => { const s = p.selectedDates[0] ?? p.getViewDate(); const e = new Date(s); e.setDate(e.getDate() + 6); return [s, e]; }) },
+    { label: 'This month', getRange(p => { const { year, month } = p.getViewMonth(); return [new Date(year, month, 1), new Date(year, month + 1, 0)]; }) }
   ]
 });`
     )

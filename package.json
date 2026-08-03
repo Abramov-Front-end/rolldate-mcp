@@ -3,8 +3,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.0.0",
-  "description": "MCP server for RollDate — install assets, snippets, API reference for AI agents (Cursor & other IDEs)",
+  "version": "1.1.0",
+  "description": "MCP server for RollDate 1.1 — install assets, snippets, API reference for AI agents (Cursor & other IDEs)",
   "type": "module",
   "bin": {
     "rolldate-mcp": "bin/rolldate-mcp.js"
