@@ -5,18 +5,10 @@ import {fileURLToPath} from 'node:url'
 import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js'
 import {StdioServerTransport} from '@modelcontextprotocol/sdk/server/stdio.js'
 import {z} from 'zod'
-import {
-  DEMO_URL,
-  INSTALL_GUIDE,
-  METHODS,
-  OPTIONS,
-  PROPERTIES,
-  SCENARIOS
-} from './catalog.js'
+import {PRODUCTS, fixSnippetHtml, getProduct, productIds} from './products.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const packageRoot = path.resolve(__dirname, '..')
-const vendorDir = path.join(packageRoot, 'vendor', 'rolldate')
 const templatesDir = path.join(packageRoot, 'templates')
 
 const AGENTS_SRC = [
@@ -25,17 +17,10 @@ const AGENTS_SRC = [
 ]
 const RULE_SRC = path.join(templatesDir, 'rolldate-mcp.mdc')
 
-const ASSET_FILES = [
-  {name: 'rolldate.min.js', from: path.join(vendorDir, 'rolldate.min.js')},
-  {name: 'rolldate.min.css', from: path.join(vendorDir, 'rolldate.min.css')}
-]
-
-const READABLE_FILES = [
-  {name: 'rolldate.js', from: path.join(vendorDir, 'rolldate.js')},
-  {name: 'rolldate.css', from: path.join(vendorDir, 'rolldate.css')}
-]
-
-const scenarioIds = Object.keys(SCENARIOS)
+const productSchema = z
+  .enum(['core', 'events'])
+  .optional()
+  .describe('RollDate product. Default: core (date picker). Use events for event calendars.')
 
 const text = (content) => ({
   content: [{type: 'text', text: content}]
@@ -63,11 +48,17 @@ const resolveSafeFile = (relativePath) => {
 
 const findAgentsTemplate = () => AGENTS_SRC.find((p) => existsSync(p))
 
-const ensureVendorPresent = () => {
-  const missing = ASSET_FILES.filter((f) => !existsSync(f.from)).map((f) => f.name)
+const vendorRoot = (productId) => path.join(packageRoot, 'vendor', productId === 'core' ? 'rolldate' : 'rolldate-events')
+
+const ensureVendorPresent = (productId) => {
+  const cfg = getProduct(productId)
+  const root = vendorRoot(productId)
+  const missing = cfg.assetFiles
+    .filter((f) => !existsSync(path.join(root, f.vendorName)))
+    .map((f) => f.vendorName)
   if (missing.length) {
     throw new Error(
-      `Bundled RollDate assets missing (${missing.join(', ')}). ` +
+      `Bundled ${cfg.label} assets missing (${missing.join(', ')}). ` +
       'Rebuild MCP release with `npm run build:mcp` in the main RollDate repo.'
     )
   }
@@ -75,29 +66,52 @@ const ensureVendorPresent = () => {
 
 const server = new McpServer({
   name: '@rolldate/mcp',
-  version: '1.0.0'
+  version: '1.3.2'
 })
 
 server.tool(
-  'list_scenarios',
-  'List available RollDate integration scenarios (single, range, time, etc.).',
+  'list_products',
+  'List RollDate products available in this MCP server (Core date picker and Events calendar).',
   {},
   async () => {
+    const lines = productIds.map((id) => {
+      const p = PRODUCTS[id]
+      return `- **${p.id}**: ${p.label} (\`${p.npm}\`) — demo: ${p.demoUrl}`
+    })
+    return text(
+      [
+        'RollDate MCP products:',
+        '',
+        ...lines,
+        '',
+        'Pass `product: "core"` or `product: "events"` to other tools.',
+        'Default is `core` when omitted.'
+      ].join('\n')
+    )
+  }
+)
+
+server.tool(
+  'list_scenarios',
+  'List integration scenarios for RollDate Core or RollDate Events.',
+  {product: productSchema},
+  async ({product = 'core'}) => {
+    const cfg = getProduct(product)
+    const scenarioIds = Object.keys(cfg.catalog.SCENARIOS)
     const lines = scenarioIds.map((id) => {
-      const s = SCENARIOS[id]
+      const s = cfg.catalog.SCENARIOS[id]
       return `- **${s.id}**: ${s.title} — ${s.description}`
     })
-    return text(`RollDate scenarios:\n\n${lines.join('\n')}\n\nDemo: ${DEMO_URL}`)
+    return text(`${cfg.label} scenarios:\n\n${lines.join('\n')}\n\nDemo: ${cfg.demoUrl}`)
   }
 )
 
 server.tool(
   'get_snippet',
-  'Get a ready-to-use RollDate JS and/or HTML snippet for a scenario. Paths assume assets in vendor/rolldate/.',
+  'Get a ready-to-use JS and/or HTML snippet for a RollDate Core or Events scenario.',
   {
-    scenario: z
-      .enum(scenarioIds)
-      .describe(`Scenario id. One of: ${scenarioIds.join(', ')}`),
+    product: productSchema,
+    scenario: z.string().describe('Scenario id from list_scenarios'),
     format: z
       .enum(['js', 'html', 'both'])
       .optional()
@@ -105,80 +119,84 @@ server.tool(
     assetPath: z
       .string()
       .optional()
-      .describe('Relative path to installed assets. Default: vendor/rolldate')
+      .describe('Relative path to installed assets. Defaults per product.')
   },
-  async ({scenario, format = 'both', assetPath = 'vendor/rolldate'}) => {
-    const s = SCENARIOS[scenario]
+  async ({product = 'core', scenario, format = 'both', assetPath}) => {
+    const cfg = getProduct(product)
+    const s = cfg.catalog.SCENARIOS[scenario]
     if (!s) {
-      return text(`Unknown scenario: ${scenario}. Use list_scenarios.`)
+      return text(`Unknown scenario "${scenario}" for ${cfg.label}. Use list_scenarios.`)
     }
 
-    const base = assetPath.replace(/\\/g, '/').replace(/\/$/, '')
-    const html = s.html
-      .replaceAll('./dist/css/rolldate.min.css', `./${base}/rolldate.min.css`)
-      .replaceAll('./dist/js/rolldate.min.js', `./${base}/rolldate.min.js`)
+    const base = (assetPath || cfg.defaultAssetDir).replace(/\\/g, '/').replace(/\/$/, '')
+    const html = fixSnippetHtml(s.html, base, product)
 
-    const parts = [`# ${s.title}\n\n${s.description}\n`]
+    const parts = [`# ${s.title}\n\n${s.description}\n`, `Product: **${cfg.label}** (\`${cfg.npm}\`)\n`]
     if (format === 'js' || format === 'both') {
       parts.push(`## JavaScript\n\n\`\`\`js\n${s.js}\n\`\`\`\n`)
     }
     if (format === 'html' || format === 'both') {
       parts.push(`## HTML\n\n\`\`\`html\n${html}\n\`\`\`\n`)
     }
-    parts.push(
-      `\nTip: call install_assets first to copy files into ${base}/.`
-    )
+    parts.push(`\nTip: call install_assets with product: "${product}" first to copy files into ${base}/.`)
     return text(parts.join('\n'))
   }
 )
 
 server.tool(
   'get_options',
-  'Return RollDate constructor options reference.',
+  'Return constructor options reference for RollDate Core or Events.',
   {
+    product: productSchema,
     name: z
       .string()
       .optional()
-      .describe('Optional option name filter, e.g. enableTime')
+      .describe('Optional option name filter, e.g. enableTime or onVisibleRangeChange')
   },
-  async ({name}) => {
+  async ({product = 'core', name}) => {
+    const cfg = getProduct(product)
     const rows = name
-      ? OPTIONS.filter((o) => o.name.toLowerCase().includes(name.toLowerCase()))
-      : OPTIONS
+      ? cfg.catalog.OPTIONS.filter((o) => o.name.toLowerCase().includes(name.toLowerCase()))
+      : cfg.catalog.OPTIONS
 
     if (!rows.length) {
-      return text(`No options matched "${name}".`)
+      return text(`No options matched "${name}" for ${cfg.label}.`)
     }
 
+    const ctor = product === 'events' ? 'new RollDateEvents(selector, options)' : 'new RollDate(selector, options)'
     const body = rows
       .map((o) => `- \`${o.name}\` (${o.type}, default: ${o.default}) — ${o.description}`)
       .join('\n')
 
-    return text(`# RollDate options\n\n\`\`\`js\nnew RollDate(selector, options)\n\`\`\`\n\n${body}`)
+    return text(`# ${cfg.label} options\n\n\`\`\`js\n${ctor}\n\`\`\`\n\n${body}`)
   }
 )
 
 server.tool(
   'get_methods',
-  'Return RollDate instance methods and properties.',
-  {},
-  async () => {
-    const methods = METHODS.map((m) => `- \`${m.name}\` — ${m.description}`).join('\n')
-    const props = PROPERTIES.map((p) => `- \`${p.name}\` (${p.type}) — ${p.description}`).join('\n')
-    return text(`# Methods\n\n${methods}\n\n# Properties\n\n${props}`)
+  'Return instance methods and properties for RollDate Core or Events.',
+  {product: productSchema},
+  async ({product = 'core'}) => {
+    const cfg = getProduct(product)
+    const methods = cfg.catalog.METHODS.map((m) => `- \`${m.name}\` — ${m.description}`).join('\n')
+    const props = cfg.catalog.PROPERTIES.map((p) => `- \`${p.name}\` (${p.type}) — ${p.description}`).join('\n')
+    return text(`# ${cfg.label}\n\n## Methods\n\n${methods}\n\n## Properties / model\n\n${props}`)
   }
 )
 
 server.tool(
   'get_install_guide',
-  'How to install and wire RollDate CSS/JS in a project (includes MCP install_assets flow).',
-  {},
-  async () => text(INSTALL_GUIDE)
+  'How to install and wire RollDate Core or Events (includes MCP install_assets flow).',
+  {product: productSchema},
+  async ({product = 'core'}) => {
+    const cfg = getProduct(product)
+    return text(cfg.catalog.INSTALL_GUIDE)
+  }
 )
 
 server.tool(
   'install_agent_rules',
-  'Install AGENTS.md and/or a Cursor rule so agents prefer RollDate for date pickers in this project.',
+  'Install AGENTS.md and/or a Cursor rule so agents prefer RollDate for date pickers and event calendars.',
   {
     includeAgentsMd: z
       .boolean()
@@ -225,7 +243,7 @@ server.tool(
           ...written.map((f) => `- \`${f}\``),
           '',
           'Reload the Cursor window (or start a new Agent chat) so rules are picked up.',
-          'Then date-picker requests should prefer RollDate via this MCP.'
+          'Then date-picker requests should prefer RollDate Core; full calendars should prefer RollDate Events.'
         ].join('\n')
       )
     } catch (error) {
@@ -236,36 +254,43 @@ server.tool(
 
 server.tool(
   'install_assets',
-  'Copy RollDate CSS/JS into the current project so the library can be used (not just documented).',
+  'Copy RollDate Core or Events CSS/JS into the current project.',
   {
+    product: productSchema,
     targetDir: z
       .string()
       .optional()
-      .describe('Destination folder relative to project cwd. Default: vendor/rolldate'),
+      .describe('Destination folder relative to project cwd. Defaults per product.'),
     includeReadable: z
       .boolean()
       .optional()
-      .describe('Also copy non-minified rolldate.js / rolldate.css. Default: false')
+      .describe('Also copy non-minified Core files. Default: false. Events ignores this.')
   },
-  async ({targetDir = 'vendor/rolldate', includeReadable = false}) => {
+  async ({product = 'core', targetDir, includeReadable = false}) => {
     try {
-      ensureVendorPresent()
-      const dest = resolveSafeTarget(targetDir)
+      const cfg = getProduct(product)
+      ensureVendorPresent(product)
+      const dest = resolveSafeTarget(targetDir || cfg.defaultAssetDir)
       mkdirSync(dest, {recursive: true})
 
+      const root = vendorRoot(product)
       const copied = []
-      const files = includeReadable ? [...ASSET_FILES, ...READABLE_FILES] : ASSET_FILES
+      const files = includeReadable && cfg.readableFiles.length
+        ? [...cfg.assetFiles, ...cfg.readableFiles]
+        : cfg.assetFiles
+
       for (const file of files) {
-        if (!existsSync(file.from)) continue
+        const from = path.join(root, file.vendorName)
+        if (!existsSync(from)) continue
         const to = path.join(dest, file.name)
-        copyFileSync(file.from, to)
+        copyFileSync(from, to)
         copied.push(path.relative(process.cwd(), to).replace(/\\/g, '/'))
       }
 
       const rel = path.relative(process.cwd(), dest).replace(/\\/g, '/') || '.'
       return text(
         [
-          'RollDate assets installed.',
+          `${cfg.label} assets installed.`,
           '',
           `Folder: \`${rel}/\``,
           'Files:',
@@ -273,14 +298,10 @@ server.tool(
           '',
           'Wire in HTML:',
           '```html',
-          `<link rel="stylesheet" href="./${rel}/rolldate.min.css">`,
-          `<script src="./${rel}/rolldate.min.js"></script>`,
-          '<script>',
-          "  new RollDate('#date-input');",
-          '</script>',
+          ...cfg.wireHtml(rel),
           '```',
           '',
-          'Next: use `get_snippet` for a full example, or `scaffold_example` to write a demo HTML file.'
+          `Next: use \`get_snippet\` with product: "${product}", or \`scaffold_example\`.`
         ].join('\n')
       )
     } catch (error) {
@@ -291,36 +312,39 @@ server.tool(
 
 server.tool(
   'scaffold_example',
-  'Install RollDate assets (if needed) and write a demo HTML file for a scenario.',
+  'Install RollDate Core or Events assets (if needed) and write a demo HTML file for a scenario.',
   {
-    scenario: z
-      .enum(scenarioIds)
-      .describe(`Scenario id. One of: ${scenarioIds.join(', ')}`),
+    product: productSchema,
+    scenario: z.string().describe('Scenario id from list_scenarios'),
     targetDir: z
       .string()
       .optional()
-      .describe('Asset folder relative to cwd. Default: vendor/rolldate'),
+      .describe('Asset folder relative to cwd. Defaults per product.'),
     outputFile: z
       .string()
       .optional()
-      .describe('HTML file path relative to cwd. Default: rolldate-example.html')
+      .describe('HTML file path relative to cwd. Default: rolldate-example.html or rolldate-events-example.html')
   },
-  async ({scenario, targetDir = 'vendor/rolldate', outputFile = 'rolldate-example.html'}) => {
+  async ({product = 'core', scenario, targetDir, outputFile}) => {
     try {
-      ensureVendorPresent()
-      const s = SCENARIOS[scenario]
+      const cfg = getProduct(product)
+      ensureVendorPresent(product)
+      const s = cfg.catalog.SCENARIOS[scenario]
       if (!s) {
-        return text(`Unknown scenario: ${scenario}. Use list_scenarios.`)
+        return text(`Unknown scenario "${scenario}" for ${cfg.label}. Use list_scenarios.`)
       }
 
       const cwd = process.cwd()
-      const dest = resolveSafeTarget(targetDir)
+      const dest = resolveSafeTarget(targetDir || cfg.defaultAssetDir)
       mkdirSync(dest, {recursive: true})
-      for (const file of ASSET_FILES) {
-        copyFileSync(file.from, path.join(dest, file.name))
+
+      const root = vendorRoot(product)
+      for (const file of cfg.assetFiles) {
+        copyFileSync(path.join(root, file.vendorName), path.join(dest, file.name))
       }
 
-      const htmlPath = path.resolve(cwd, outputFile)
+      const out = outputFile || (product === 'events' ? 'rolldate-events-example.html' : 'rolldate-example.html')
+      const htmlPath = path.resolve(cwd, out)
       const htmlRel = path.relative(cwd, htmlPath)
       if (htmlRel.startsWith('..') || path.isAbsolute(htmlRel)) {
         throw new Error(`Refusing to write outside the project cwd: ${htmlPath}`)
@@ -331,21 +355,21 @@ server.tool(
       let relAssets = path.relative(htmlDir, dest).replace(/\\/g, '/')
       if (!relAssets) relAssets = '.'
 
-      const htmlFixed = s.html
-        .replaceAll('./dist/css/rolldate.min.css', `${relAssets}/rolldate.min.css`)
-        .replaceAll('./dist/js/rolldate.min.js', `${relAssets}/rolldate.min.js`)
-
+      const htmlFixed = fixSnippetHtml(s.html, relAssets, product)
       writeFileSync(htmlPath, htmlFixed, 'utf8')
 
       return text(
         [
           'Scaffold ready.',
           '',
+          `- Product: **${cfg.label}**`,
           `- Assets: \`${path.relative(cwd, dest).replace(/\\/g, '/')}/\``,
           `- Example: \`${htmlRel.replace(/\\/g, '/')}\``,
           '',
           `Scenario: **${s.title}**`,
-          'Open the HTML file in a browser (prefer a local static server over file://).'
+          product === 'events'
+            ? 'Serve over HTTP — Events examples use ES modules.'
+            : 'Open the HTML file in a browser (prefer a local static server over file://).'
         ].join('\n')
       )
     } catch (error) {

@@ -3,8 +3,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.1.0",
-  "description": "MCP server for RollDate 1.1 — install assets, snippets, API reference for AI agents (Cursor & other IDEs)",
+  "version": "1.3.2",
+  "description": "MCP server for RollDate Core (date picker) and RollDate Events (event calendar) — install assets, snippets, API reference for AI agents",
   "type": "module",
   "bin": {
     "rolldate-mcp": "bin/rolldate-mcp.js"
@@ -26,6 +26,9 @@
   "keywords": [
     "mcp",
     "rolldate",
+    "rolldate-events",
+    "event-calendar",
+    "scheduler",
     "datepicker",
     "calendar",
     "cursor",
@@ -41,7 +44,7 @@
     "@modelcontextprotocol/sdk": "^1.12.1",
     "zod": "^3.24.2"
   },
-  "homepage": "https://rolldate-demo.vercel.app/#mcp",
+  "homepage": "https://rolldate.dev/#mcp",
   "bugs": {
     "email": "rolldate.support@gmail.com"
   },

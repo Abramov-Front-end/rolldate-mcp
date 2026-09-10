@@ -3,10 +3,10 @@
  * Keep in sync with release docs when shipping a new RollDate version.
  */
 
-export const DEMO_URL = 'https://rolldate-demo.vercel.app/'
+export const DEMO_URL = 'https://rolldate.dev/'
 
 export const OPTIONS = [
-  { name: 'theme', type: "'dark' | 'light'", default: "'dark'", description: 'Color theme' },
+  { name: 'theme', type: "'main' | 'dark' | 'light'", default: "'main'", description: 'Color theme (main is default)' },
   { name: 'selectType', type: "'single' | 'range' | 'multi'", default: "'single'", description: 'Selection mode' },
   { name: 'startDate', type: 'string | Date', default: 'today', description: 'Initial calendar position / value' },
   { name: 'minDate', type: 'string | Date', default: '100 years ago', description: 'Minimum selectable date' },
@@ -23,10 +23,11 @@ export const OPTIONS = [
   { name: 'monthsShortNames', type: 'string[]', default: 'English short names', description: 'Short month labels' },
   { name: 'weekDaysNames', type: 'string[]', default: 'Sun…Sat', description: 'Weekday headers' },
   { name: 'enableTime', type: 'boolean', default: 'false', description: 'Show scrollable time picker in footer' },
-  { name: 'use12Hour', type: 'boolean', default: 'false', description: '12-hour time + AM/PM column' },
+  { name: 'use12Hour', type: 'boolean', default: 'false', description: '12-hour time + AM/PM toggle beside rolls' },
+  { name: 'timePosition', type: "'right' | 'bottom'", default: "'right'", description: 'Desktop time panel placement; mobile always bottom' },
   { name: 'timeStep', type: 'number', default: '1', description: 'Minute step (e.g. 5 → 00, 05, 10…)' },
   { name: 'hapticFeedback', type: 'boolean', default: 'true', description: 'Tick feedback on month/year/decade/time changes (vibrate or soft click)' },
-  { name: 'footerButtons', type: 'FooterButton[]', default: '[]', description: 'Custom footer buttons' },
+  { name: 'footerButtons', type: 'FooterButton[]', default: '[]', description: 'Custom footer buttons; optional variant: primary | secondary' },
   { name: 'selectDate', type: 'function', default: 'logs to console', description: 'Selection callback' },
   { name: 'onOpen', type: 'function', default: 'noop', description: 'Popup opened' },
   { name: 'onClose', type: 'function', default: 'noop', description: 'Popup closed' },
@@ -249,9 +250,9 @@ picker.enableDate('31.12.2026');`
     js: `new RollDate('#date-input', {
   closeOnSelect: false,
   footerButtons: [
-    { text: 'Today', action: 'today' },
-    { text: 'Clear', action: 'clear' },
-    { text: 'Done', onClick: (picker) => picker.close() }
+    { text: 'Today', action: 'today', variant: 'secondary' },
+    { text: 'Clear', action: 'clear', variant: 'secondary' },
+    { text: 'Done', variant: 'primary', onClick: (picker) => picker.close() }
   ]
 });`,
     html: htmlShell(
@@ -259,9 +260,9 @@ picker.enableDate('31.12.2026');`
       `new RollDate('#date-input', {
   closeOnSelect: false,
   footerButtons: [
-    { text: 'Today', action: 'today' },
-    { text: 'Clear', action: 'clear' },
-    { text: 'Done', onClick: (picker) => picker.close() }
+    { text: 'Today', action: 'today', variant: 'secondary' },
+    { text: 'Clear', action: 'clear', variant: 'secondary' },
+    { text: 'Done', variant: 'primary', onClick: (picker) => picker.close() }
   ]
 });`
     )
