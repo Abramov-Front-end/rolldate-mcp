@@ -155,7 +155,7 @@ new RollDateEvents('#calendar', {
   agenda: {
     id: 'agenda',
     title: 'Agenda view',
-    description: 'Continuous agenda list grouped by day.',
+    description: 'Compact event list grouped by date. Days without events are skipped.',
     js: `${importLine}
 new RollDateEvents('#calendar', {
   defaultView: 'agenda',

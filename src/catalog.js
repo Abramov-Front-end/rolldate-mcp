@@ -12,9 +12,12 @@ export const OPTIONS = [
   { name: 'minDate', type: 'string | Date', default: '100 years ago', description: 'Minimum selectable date' },
   { name: 'maxDate', type: 'string | Date', default: '100 years ahead', description: 'Maximum selectable date' },
   { name: 'dateFormat', type: 'string', default: "'DD.MM.YYYY' or from locale", description: 'Input/output date format' },
-  { name: 'locale', type: 'string', default: '—', description: 'Browser locale hint for default dateFormat' },
+  { name: 'locale', type: 'string', default: '—', description: 'BCP 47 locale for dateFormat and accessible labels' },
+  { name: 'previousMonthLabel', type: 'string', default: "'Previous month' or Ukrainian from locale", description: 'Accessible name for previous-month button' },
+  { name: 'nextMonthLabel', type: 'string', default: "'Next month' or Ukrainian from locale", description: 'Accessible name for next-month button' },
   { name: 'startWeekFromMonday', type: 'boolean', default: 'true', description: 'Week starts on Monday when true' },
-  { name: 'disabledDates', type: 'string[]', default: '[]', description: 'Dates that cannot be selected' },
+  { name: 'disabledDates', type: 'DateRule[]', default: '[]', description: 'Denylist: exact dates, inclusive ranges, weekly/monthly repeats, or callbacks. Always wins over enabledDates' },
+  { name: 'enabledDates', type: 'DateRule[]', default: 'undefined', description: 'Allowlist: when set, every other date is blocked. Omit for all dates (except disabled/min-max). [] blocks every date' },
   { name: 'highlightDates', type: '(string|Date|{date,color?,colors?})[]', default: '[]', description: 'Dot markers on days; optional color(s) per date' },
   { name: 'rangePresets', type: 'RangePreset[]', default: '[]', description: 'Quick range buttons (range mode); getRange(picker) returns [start,end]' },
   { name: 'closeOnSelect', type: 'boolean', default: 'true', description: 'Close popup after selection (single mode)' },
@@ -26,7 +29,8 @@ export const OPTIONS = [
   { name: 'use12Hour', type: 'boolean', default: 'false', description: '12-hour time + AM/PM toggle beside rolls' },
   { name: 'timePosition', type: "'right' | 'bottom'", default: "'right'", description: 'Desktop time panel placement; mobile always bottom' },
   { name: 'timeStep', type: 'number', default: '1', description: 'Minute step (e.g. 5 → 00, 05, 10…)' },
-  { name: 'hapticFeedback', type: 'boolean', default: 'true', description: 'Tick feedback on month/year/decade/time changes (vibrate or soft click)' },
+  { name: 'hapticFeedback', type: 'boolean', default: 'true', description: 'Tick feedback on month/year/decade/time changes on touch-primary devices (vibrate or soft click)' },
+  { name: 'scrollSpeed', type: 'number', default: '1', description: 'Wheel/touch speed multiplier. 1 is the default; 0.7 slower, 1.5 faster; 0 disables scroll (arrows and keyboard still work)' },
   { name: 'footerButtons', type: 'FooterButton[]', default: '[]', description: 'Custom footer buttons; optional variant: primary | secondary' },
   { name: 'selectDate', type: 'function', default: 'logs to console', description: 'Selection callback' },
   { name: 'onOpen', type: 'function', default: 'noop', description: 'Popup opened' },
@@ -37,7 +41,7 @@ export const OPTIONS = [
 
 export const METHODS = [
   { name: 'open()', description: 'Show popup (popup mode)' },
-  { name: 'close()', description: 'Hide popup' },
+  { name: 'close(opts?)', description: 'Hide popup; pass { restoreFocus: true } to return focus to the opener' },
   { name: 'selectToday()', description: 'Select today (respects disabled dates; applies time if enabled)' },
   { name: 'clearSelection()', description: 'Clear current selection' },
   { name: 'goToDate(dateLike)', description: 'Navigate calendar to date without selecting' },
@@ -45,10 +49,11 @@ export const METHODS = [
   { name: 'setValue(value)', description: 'Set selection programmatically; null clears' },
   { name: 'getViewMonth()', description: 'Visible month { year, month } (follows scroll)' },
   { name: 'getViewDate()', description: 'First day of visible month' },
-  { name: 'setDisabledDates(dates)', description: 'Replace full disabled list' },
-  { name: 'disableDate(dateLike)', description: 'Disable one date' },
-  { name: 'enableDate(dateLike)', description: 'Enable one date' },
-  { name: 'isDateDisabled(dateLike)', description: 'Returns boolean' },
+  { name: 'setDisabledDates(dates)', description: 'Replace the full disabledDates rule list' },
+  { name: 'setEnabledDates(dates?)', description: 'Replace the allowlist. undefined turns it off; [] blocks every date. Non-array values are ignored and keep the current allowlist. Unavailable selected dates are dropped and selectDate runs' },
+  { name: 'disableDate(dateLike)', description: 'Disable one exact date' },
+  { name: 'enableDate(dateLike)', description: 'Remove one exact denylist entry only; cannot override weekly/monthly/range/callback disabledDates rules' },
+  { name: 'isDateDisabled(dateLike)', description: 'True if the date cannot be selected (min/max, enabledDates, disabledDates)' },
   { name: 'setHighlightDates(dates)', description: 'Replace highlight markers' },
   { name: 'highlightDate(dateLike, color?)', description: 'Add dot marker (append)' },
   { name: 'unhighlightDate(dateLike, color?)', description: 'Remove dot marker(s)' },
@@ -225,22 +230,22 @@ export const SCENARIOS = {
   },
   disabled: {
     id: 'disabled',
-    title: 'Disabled dates + runtime API',
-    description: 'Block dates and change them at runtime.',
+    title: 'Availability rules',
+    description: 'Allowlist weekends, then block exceptions with disabledDates.',
     js: `const picker = new RollDate('#date-input', {
-  disabledDates: ['25.12.2026', '31.12.2026'],
+  enabledDates: [{ repeat: 'weekly', weekdays: [0, 6] }],
+  disabledDates: ['26.12.2026'],
   closeOnSelect: false
 });
-picker.disableDate('01.01.2027');
-picker.enableDate('31.12.2026');`,
+picker.disableDate('01.01.2027');`,
     html: htmlShell(
-      `  <input id="date-input" type="text" placeholder="Try blocked days" autocomplete="off">`,
+      `  <input id="date-input" type="text" placeholder="Weekends only" autocomplete="off">`,
       `const picker = new RollDate('#date-input', {
-  disabledDates: ['25.12.2026', '31.12.2026'],
+  enabledDates: [{ repeat: 'weekly', weekdays: [0, 6] }],
+  disabledDates: ['26.12.2026'],
   closeOnSelect: false
 });
-picker.disableDate('01.01.2027');
-picker.enableDate('31.12.2026');`
+picker.disableDate('01.01.2027');`
     )
   },
   footer: {

@@ -16,7 +16,7 @@ Works with **Cursor, Claude Desktop, VS Code, Windsurf**, and any other MCP-comp
 npx -y @rolldate/mcp
 ```
 
-Or pin a version: `npx -y @rolldate/mcp@1.3.2`
+Or pin a version: `npx -y @rolldate/mcp@1.3.3`
 
 ## One server, two products
 
