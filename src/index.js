@@ -66,7 +66,7 @@ const ensureVendorPresent = (productId) => {
 
 const server = new McpServer({
   name: '@rolldate/mcp',
-  version: '1.3.3'
+  version: '1.3.5'
 })
 
 server.tool(

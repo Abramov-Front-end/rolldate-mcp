@@ -16,7 +16,7 @@ Works with **Cursor, Claude Desktop, VS Code, Windsurf**, and any other MCP-comp
 npx -y @rolldate/mcp
 ```
 
-Or pin a version: `npx -y @rolldate/mcp@1.3.3`
+Or pin a version: `npx -y @rolldate/mcp@1.3.5`
 
 ## One server, two products
 
@@ -50,25 +50,14 @@ Bundled files:
 
 ## Cursor / IDE config
 
+Add this in Cursor (`Settings → MCP`) or any MCP client. Others install from npm — do **not** point at a local `mcp/src/index.js`.
+
 ```json
 {
   "mcpServers": {
     "rolldate": {
       "command": "npx",
       "args": ["-y", "@rolldate/mcp"]
-    }
-  }
-}
-```
-
-Local (main repo while developing):
-
-```json
-{
-  "mcpServers": {
-    "rolldate": {
-      "command": "node",
-      "args": ["D:/Projects/rolldate/mcp/src/index.js"]
     }
   }
 }

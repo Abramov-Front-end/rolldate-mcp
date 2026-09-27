@@ -10,7 +10,8 @@ export const PRODUCTS = {
     defaultAssetDir: 'vendor/rolldate',
     assetFiles: [
       {name: 'rolldate.min.js', vendorName: 'rolldate.min.js'},
-      {name: 'rolldate.min.css', vendorName: 'rolldate.min.css'}
+      {name: 'rolldate.min.css', vendorName: 'rolldate.min.css'},
+      {name: 'rolldate-presets.min.js', vendorName: 'rolldate-presets.min.js'}
     ],
     readableFiles: [
       {name: 'rolldate.js', vendorName: 'rolldate.js'},
@@ -64,6 +65,7 @@ export function fixSnippetHtml(html, assetPath, productId) {
     return html
       .replaceAll('./dist/css/rolldate.min.css', `./${base}/rolldate.min.css`)
       .replaceAll('./dist/js/rolldate.min.js', `./${base}/rolldate.min.js`)
+      .replaceAll('./dist/js/rolldate-presets.min.js', `./${base}/rolldate-presets.min.js`)
   }
   return html
     .replaceAll('./vendor/rolldate-events/rolldate-events.css', `./${base}/rolldate-events.css`)

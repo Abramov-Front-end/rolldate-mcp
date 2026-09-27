@@ -6,7 +6,7 @@
 export const DEMO_URL = 'https://rolldate.dev/'
 
 export const OPTIONS = [
-  { name: 'theme', type: "'main' | 'dark' | 'light'", default: "'main'", description: 'Color theme (main is default)' },
+  { name: 'theme', type: "'main' | 'dark' | 'light'", default: "'main'", description: 'Color theme (main is default). Override color tokens such as --rd-accent on .RollDate__container — see https://rolldate.dev/docs/css-variables' },
   { name: 'selectType', type: "'single' | 'range' | 'multi'", default: "'single'", description: 'Selection mode' },
   { name: 'startDate', type: 'string | Date', default: 'today', description: 'Initial calendar position / value' },
   { name: 'minDate', type: 'string | Date', default: '100 years ago', description: 'Minimum selectable date' },
@@ -19,7 +19,9 @@ export const OPTIONS = [
   { name: 'disabledDates', type: 'DateRule[]', default: '[]', description: 'Denylist: exact dates, inclusive ranges, weekly/monthly repeats, or callbacks. Always wins over enabledDates' },
   { name: 'enabledDates', type: 'DateRule[]', default: 'undefined', description: 'Allowlist: when set, every other date is blocked. Omit for all dates (except disabled/min-max). [] blocks every date' },
   { name: 'highlightDates', type: '(string|Date|{date,color?,colors?})[]', default: '[]', description: 'Dot markers on days; optional color(s) per date' },
-  { name: 'rangePresets', type: 'RangePreset[]', default: '[]', description: 'Quick range buttons (range mode); getRange(picker) returns [start,end]' },
+  { name: 'rangePresets', type: 'RangePreset[]', default: '[]', description: 'Quick range buttons (range mode): { label, getRange(picker) → [start,end], id?, icon? }. Ready set: presets([...ids], { locale }) from @rolldate/core/presets (window.RollDatePresets). Active preset gets --active + aria-pressed' },
+  { name: 'presetsLabel', type: 'string', default: "''", description: 'Accessible name for the presets group' },
+  { name: 'containerClass', type: 'string', default: "''", description: 'Extra classes on .RollDate__container for CSS layout themes (slots: [data-rd-slot="content|presets|footer"])' },
   { name: 'closeOnSelect', type: 'boolean', default: 'true', description: 'Close popup after selection (single mode)' },
   { name: 'triggerSelector', type: 'string', default: '—', description: 'CSS selector for open trigger' },
   { name: 'monthsNames', type: 'string[]', default: 'English month names', description: 'Full month labels' },
@@ -31,7 +33,7 @@ export const OPTIONS = [
   { name: 'timeStep', type: 'number', default: '1', description: 'Minute step (e.g. 5 → 00, 05, 10…)' },
   { name: 'hapticFeedback', type: 'boolean', default: 'true', description: 'Tick feedback on month/year/decade/time changes on touch-primary devices (vibrate or soft click)' },
   { name: 'scrollSpeed', type: 'number', default: '1', description: 'Wheel/touch speed multiplier. 1 is the default; 0.7 slower, 1.5 faster; 0 disables scroll (arrows and keyboard still work)' },
-  { name: 'footerButtons', type: 'FooterButton[]', default: '[]', description: 'Custom footer buttons; optional variant: primary | secondary' },
+  { name: 'footerButtons', type: 'FooterButton[]', default: '[]', description: 'Custom footer buttons: any text, action today | clear | close or onClick(picker); variant primary | secondary | link; position left | right (left group at start, rest at end); className, ariaLabel' },
   { name: 'selectDate', type: 'function', default: 'logs to console', description: 'Selection callback' },
   { name: 'onOpen', type: 'function', default: 'noop', description: 'Popup opened' },
   { name: 'onClose', type: 'function', default: 'noop', description: 'Popup closed' },
@@ -54,9 +56,9 @@ export const METHODS = [
   { name: 'disableDate(dateLike)', description: 'Disable one exact date' },
   { name: 'enableDate(dateLike)', description: 'Remove one exact denylist entry only; cannot override weekly/monthly/range/callback disabledDates rules' },
   { name: 'isDateDisabled(dateLike)', description: 'True if the date cannot be selected (min/max, enabledDates, disabledDates)' },
-  { name: 'setHighlightDates(dates)', description: 'Replace highlight markers' },
-  { name: 'highlightDate(dateLike, color?)', description: 'Add dot marker (append)' },
-  { name: 'unhighlightDate(dateLike, color?)', description: 'Remove dot marker(s)' },
+  { name: 'setHighlightDates(dates)', description: 'Replace highlight markers in place without rebuilding the calendar' },
+  { name: 'highlightDate(dateLike, color?)', description: 'Add a dot marker in place (append)' },
+  { name: 'unhighlightDate(dateLike, color?)', description: 'Remove dot marker(s) in place' },
   { name: 'isDateHighlighted(dateLike)', description: 'Returns boolean' },
   { name: 'getHighlightColors(dateLike)', description: 'Dot colors for a day' },
   { name: 'destroy()', description: 'Remove picker from DOM and detach listeners' }
@@ -251,12 +253,12 @@ picker.disableDate('01.01.2027');`
   footer: {
     id: 'footer',
     title: 'Footer buttons',
-    description: 'Built-in today/clear actions plus custom onClick.',
+    description: 'Built-in today/clear/close actions plus custom onClick; variants primary/secondary/link; position left/right.',
     js: `new RollDate('#date-input', {
   closeOnSelect: false,
   footerButtons: [
+    { text: 'Clear', action: 'clear', variant: 'link', position: 'left' },
     { text: 'Today', action: 'today', variant: 'secondary' },
-    { text: 'Clear', action: 'clear', variant: 'secondary' },
     { text: 'Done', variant: 'primary', onClick: (picker) => picker.close() }
   ]
 });`,
@@ -265,8 +267,8 @@ picker.disableDate('01.01.2027');`
       `new RollDate('#date-input', {
   closeOnSelect: false,
   footerButtons: [
+    { text: 'Clear', action: 'clear', variant: 'link', position: 'left' },
     { text: 'Today', action: 'today', variant: 'secondary' },
-    { text: 'Clear', action: 'clear', variant: 'secondary' },
     { text: 'Done', variant: 'primary', onClick: (picker) => picker.close() }
   ]
 });`
@@ -295,22 +297,20 @@ picker.disableDate('01.01.2027');`
   'range-presets': {
     id: 'range-presets',
     title: 'Range presets',
-    description: 'Quick range buttons; use picker.getViewMonth() for visible month.',
-    js: `new RollDate('#range', {
+    description: 'Ready presets from the optional plugin (@rolldate/core/presets, window.RollDatePresets) plus a custom one. Ids: today, yesterday, tomorrow, thisWeek, lastWeek, nextWeek, weekToDate, weekend, last7, last14, last30, last90, next7, next14, next30, thisMonth, lastMonth, nextMonth, monthToDate, thisQuarter, lastQuarter, nextQuarter, quarterToDate, thisYear, lastYear, nextYear, yearToDate, last12Months; lastN/nextN(n, unit).',
+    js: `import RollDate from '@rolldate/core';
+import { presets, lastN } from '@rolldate/core/presets';
+
+new RollDate('#range', {
   selectType: 'range',
   closeOnSelect: false,
+  presetsLabel: 'Quick select',
   rangePresets: [
+    ...presets(['today', 'thisWeek', 'last7', 'last30', 'thisMonth', 'lastQuarter'], { locale: 'en' }),
+    lastN(6, 'month'),
     {
-      label: '7 days',
-      getRange(picker) {
-        const start = picker.selectedDates[0] ?? picker.getViewDate();
-        const end = new Date(start);
-        end.setDate(end.getDate() + 6);
-        return [start, end];
-      }
-    },
-    {
-      label: 'This month',
+      id: 'visibleMonth',
+      label: 'Visible month',
       getRange(picker) {
         const { year, month } = picker.getViewMonth();
         return [new Date(year, month, 1), new Date(year, month + 1, 0)];
@@ -319,14 +319,13 @@ picker.disableDate('01.01.2027');`
   ]
 });`,
     html: htmlShell(
-      `  <input id="range" type="text" placeholder="Select range" autocomplete="off">`,
+      `  <input id="range" type="text" placeholder="Select range" autocomplete="off">
+<script src="./dist/js/rolldate-presets.min.js"></script>`,
       `new RollDate('#range', {
   selectType: 'range',
   closeOnSelect: false,
-  rangePresets: [
-    { label: '7 days', getRange(p => { const s = p.selectedDates[0] ?? p.getViewDate(); const e = new Date(s); e.setDate(e.getDate() + 6); return [s, e]; }) },
-    { label: 'This month', getRange(p => { const { year, month } = p.getViewMonth(); return [new Date(year, month, 1), new Date(year, month + 1, 0)]; }) }
-  ]
+  presetsLabel: 'Quick select',
+  rangePresets: RollDatePresets.presets(['today', 'thisWeek', 'last7', 'last30', 'thisMonth', 'lastQuarter'])
 });`
     )
   }
